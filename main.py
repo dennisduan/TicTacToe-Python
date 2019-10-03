@@ -5,6 +5,8 @@ import copy
 import _thread
 import threading
 
+import minimax
+
 
 def get_screen_size(window):
     return window.winfo_screenwidth(),window.winfo_screenheight()
@@ -22,12 +24,12 @@ def drawX(x, y, color='black'):
     canvas.create_line(x*50+10, y*50+10, x*50+40, y*50+40, fill=color)
     canvas.create_line(x*50+10, y*50+40, x*50+40, y*50+10, fill=color)
     canvas.pack()
-    ttt[x][y] = 1
+    ttt[x][y] = 'x'
 
 def drawO(x, y, color='black'):
     canvas.create_oval(x*50+10, y*50+10, x*50+40, y*50+40, fill=color)
     canvas.pack()
-    ttt[x][y] = 2
+    ttt[x][y] = 'o'
 
 def gameover_thread(event):
     global canvas, win_pattern, game_winner
@@ -35,11 +37,11 @@ def gameover_thread(event):
     event.wait()
 
     highlight_winner_pattern(canvas, win_pattern, game_winner)
-    if game_winner == 1:
+    if game_winner == 'x':
         root.title('you WIN')
-    elif game_winner == 2:
+    elif game_winner == 'o':
         root.title('you LOSE')
-    elif game_winner == -1:
+    elif game_winner == 'd':
         root.title('Draw')
     else:
         root.title('Something went wrong...')
@@ -56,17 +58,17 @@ def btn1_click(event):
     row = event.x // 50 
     col = event.y // 50
 
-    if ttt[row][col] == 0:    # allowed
+    if ttt[row][col] == '':    # allowed
         drawX(row, col)
         winner = check_result(ttt)
-        if winner !=0:
+        if winner != '':
             game_winner = winner
             gameover_event.set()
             gameover_event.clear()
         else:
             AI_battle()
             winner = check_result(ttt)
-        if winner != 0:
+        if winner != '':
             game_winner = winner
             gameover_event.set()
             gameover_event.clear()
@@ -75,48 +77,41 @@ def AI_battle():
     global ttt, game_winner
     # Choose a cell to place 'O'
     # record the move
-    empty_corners = []
-    empty_others = []
+    available_pos = []
 
     # scan the table
     for i in range(3):
         for j in range(3):
-            if ttt[i][j] == 0 and ((i,j) in ((0,0), (0,2), (2,0), (2,2))):
-                empty_corners.append((i,j))
-            elif ttt[i][j] == 0:
-                empty_others.append((i,j))
+            if ttt[i][j] == '':
+                available_pos.append((i,j))
 
-    if len(empty_corners) == 0 and len(empty_others) == 0:      # Draw
-        game_winner = -1
+    if len(available_pos) == 0:      # Draw
+        game_winner = 'd'
         return
 
-    # Check if there's cell "win" this game
-    for (x,y) in empty_corners + empty_others:
-        temp_ttt = copy.deepcopy(ttt)
-        temp_ttt[x][y] = 2
-        winner = check_result(temp_ttt)
-        if winner == 2: # computer win
-            drawO(x, y)
-            return
+    # Change ttt to 1-demension array
+    board = []
+    for i in range(3):
+        for j in range(3):
+            board.append(ttt[i][j])
 
-    # No cell can win the game at this moment
-    if ttt[1][1] == 0:
-        drawO(1, 1)
-    elif len(empty_corners) > 0:
-        p = empty_corners[random.randint(0,len(empty_corners)-1)]
-        drawO(p[0], p[1])
-    elif len(empty_others) > 0:
-        p = empty_others[random.randint(0,len(empty_others)-1)]
-        drawO(p[0], p[1])
+    best_move, _ = minimax.get_score(board, 'o')
+    print(best_move)
+
+    drawO(best_move//3, best_move%3)
+
 
 def check_result(grid):
     global win_pattern
-    winner = 0;
+    winner = ''
 
     # Check cross
     if grid[0][0] == grid[1][1] == grid[2][2]:
         winner = grid[0][0]
         win_pattern = ((0,0), (1,1), (2,2))
+    elif grid[2][0] == grid[1][1] == grid[0][2]:
+        winner = grid[2][0]
+        win_pattern = ((2,0), (1,1), (0,2))
     
     # Check row / column
     for i in range(3):
@@ -134,16 +129,11 @@ def check_result(grid):
 
 def highlight_winner_pattern(canvas, win_pattern, winner):
     for item in win_pattern:
-        if winner == 1:
+        if winner == 'x':
             drawX(item[0], item[1], color='red')
-        elif winner == 2:
+        elif winner == 'o':
             drawO(item[0], item[1], color='red')
 
-def show_winner(winner):
-    if winner == 1:
-        tk.messagebox.showinfo("Game", "YOU WIN!!!")
-    else:
-        tk.messagebox.showinfo("Game", "YOU LOSE!!!")
 
 root = tk.Tk()
 # width x height + x_offset + y_offset:
@@ -151,11 +141,11 @@ center_window(root, 150, 150)
 root.maxsize(150, 150)
 root.minsize(150, 150)
 
-ttt = [[0,0,0],[0,0,0],[0,0,0]]     # record Tic-Tac-Toe grid
+ttt = [['']*3,['']*3,['']*3]     # record Tic-Tac-Toe grid
 gameover_event = threading.Event()
 gameover_flag = False
 win_pattern = []
-game_winner = 0
+game_winner = ''
 
 _thread.start_new_thread(gameover_thread, (gameover_event,))
 
