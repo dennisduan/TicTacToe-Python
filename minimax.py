@@ -118,9 +118,46 @@ def get_score(board, player):
 huPlayer = 'x'
 aiPlayer = 'o'
 
+def print_board(board):
+    for i in range(3):
+        line = ''
+        for j in range(3):
+            if board[3*i+j] == '':
+                line += '-'
+            else:
+                line += board[3*i+j]
+        print(line)
+                
 
 if __name__ == '__main__':
-    board = ['o','','x','','x','','','','']
-    bestMove, score = get_score(board, aiPlayer)
-    print('BestMove is ' + str(bestMove))
-    print('Score of best move is ' + str(score))
+    board = ['','','','','','','','','']
+    while True:
+        bestMove, score = get_score(board, aiPlayer)
+        board[bestMove] = aiPlayer
+        print('AI moved...')
+        print_board(board)
+
+        winner = check_finish(board)
+        if winner == aiPlayer:
+            print('AI win this game!')
+            exit(0)
+        elif winner == 'd':
+            print('Draw!')
+            exit(0)
+
+        while True:
+            huPlayer_pos = int(input("It's your turn:"))
+            if board[huPlayer_pos] != '':
+                print('This position you input is invalid, please retry...')
+                continue
+            else:
+                board[huPlayer_pos] = huPlayer
+                print('User moved...')
+                print_board(board)
+                break
+        
+        check_finish(board)
+        winner = check_finish(board)
+        if winner == huPlayer:
+            print('You win!')
+            exit(0)
